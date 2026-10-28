@@ -121,6 +121,23 @@ npm run lint       # ESLint 代码检查（--fix 可自动修复）
 npm run tauri build # 打包桌面安装包
 ```
 
+## 持续集成与打包
+
+GitHub Actions 配置位于 `.github/workflows/build.yml`，可在一次运行中同时构建三个平台的安装包：
+
+| 平台    | Runner          | 产物                                        |
+| ------- | --------------- | ------------------------------------------- |
+| Linux   | `ubuntu-22.04`  | `.deb`、`.rpm`、`.AppImage`                 |
+| Windows | `windows-latest` | NSIS `.exe`、`.msi`                         |
+| macOS   | `macos-latest`  | 通用架构（Apple Silicon + Intel）`.dmg`/`.app` |
+
+触发方式：
+
+- 推送 `v*` 标签（如 `git tag v0.1.0 && git push origin v0.1.0`）：自动创建草稿 Release，并把各平台安装包上传到该 Release。
+- 在 Actions 页面手动触发 `Build`（workflow_dispatch）：安装包以 workflow artifacts 形式保留，可直接下载。
+
+macOS 安装包为通用二进制，构建时同时安装 `aarch64-apple-darwin` 与 `x86_64-apple-darwin` 目标。当前产物未做代码签名（macOS 未公证、Windows 未签名），安装时系统可能提示来源未知；如需正式分发，需补充 Apple Developer ID、公证以及 Windows 代码签名证书对应的 secrets 与 `tauri.conf.json` 签名配置。
+
 ## 新增翻译源
 
 1. 在 `src/services/translator/` 下新建文件，实现 `TranslationProvider` 接口。
