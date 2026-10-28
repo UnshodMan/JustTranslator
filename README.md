@@ -141,8 +141,10 @@ GitHub Actions 配置位于 `.github/workflows/build.yml`，可在一次运行�
 | 平台    | Runner          | 产物                                        |
 | ------- | --------------- | ------------------------------------------- |
 | Linux   | `ubuntu-22.04`  | `.deb`、`.rpm`、`.AppImage`                 |
-| Windows | `windows-latest` | NSIS `.exe`、`.msi`                         |
+| Windows | `windows-latest` | NSIS `.exe`                                  |
 | macOS   | `macos-latest`  | 通用架构（Apple Silicon + Intel）`.dmg`/`.app` |
+
+Windows 的 NSIS 安装程序（`-setup.exe`）内置英文与简体中文界面，默认跟随系统语言自动切换；系统语言不在列表中时回退英文。需要更多语言时，在 `src-tauri/tauri.conf.json` 的 `bundle.windows.nsis.languages` 数组中加入对应的 NSIS 语言名即可。
 
 触发方式：
 
