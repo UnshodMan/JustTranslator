@@ -7,7 +7,7 @@
 - 多翻译源支持：百度翻译（需 AppID/密钥）、Google 翻译、微软 Bing 翻译（后两者免登录、无需凭据）。
 - 源语言自动检测、语言互换、译文分段展示与一键复制。
 - 朗读：原文与译文均可一键朗读，默认朗读英语；支持系统语音（离线）与 Google 在线语音（音色自然），译文可自动朗读，语速可调。
-- 自动切换语言方向：输入中文时目标语言切到英语，输入英语时切到中文（可在语言栏的"自动切换"开关或设置中关闭）。
+- 自动切换语言方向：输入中文时目标语言切到英语，输入英语时切到中文；输入其他语言时源语言切到"自动检测"，由翻译源识别源语言（可在语言栏的"自动切换"开关或设置中关闭）。
 - 自动翻译：停止输入后自动调用翻译接口，无需手动点击翻译按钮（可在设置中关闭）。
 - 翻译源凭据由设置界面配置，优先保存在系统钥匙串中；钥匙串不可用时自动回退为配置文件明文。
 - 翻译源通过统一接口注册，新增翻译源无需改动 Rust。
@@ -110,7 +110,7 @@
 
 ## 开发与构建
 
-环境要求：Node.js 18+、Rust 1.77+，以及对应平台的 Tauri 系统依赖。
+环境要求：Node.js 22 LTS+（≥ 22.12.0，与 `.nvmrc` 和 `package.json` 的 `engines` 一致）、Rust 1.77+，以及对应平台的 Tauri 系统依赖。
 
 ```bash
 npm install        # 安装前端依赖
@@ -120,6 +120,19 @@ npm run build      # TypeScript 类型检查 + 前端构建
 npm run lint       # ESLint 代码检查（--fix 可自动修复）
 npm run tauri build # 打包桌面安装包
 ```
+
+### 版本号管理
+
+版本号以 `package.json` 的 `version` 为唯一来源：`src-tauri/tauri.conf.json` 通过 `"version": "../package.json"` 直接引用，其余文件由脚本同步更新。
+
+```bash
+npm run version:bump -- patch   # 0.1.0 -> 0.1.1
+npm run version:bump -- minor   # 0.1.0 -> 0.2.0
+npm run version:bump -- major   # 0.1.0 -> 1.0.0
+npm run version:bump -- 0.2.3   # 直接指定版本
+```
+
+脚本 [scripts/bump-version.mjs](scripts/bump-version.mjs) 会同时更新 `package.json`、`package-lock.json`、`src-tauri/Cargo.toml` 与 `src-tauri/Cargo.lock`。发布时先执行 bump，再提交改动并推送 `v` 前缀标签（如 `git tag v0.2.0 && git push origin v0.2.0`）。不要单独使用 `npm version`，否则 Rust 侧版本会不同步。
 
 ## 持续集成与打包
 

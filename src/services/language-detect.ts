@@ -1,31 +1,36 @@
 /**
- * 根据输入文本判断翻译方向：中文译成英语，英语译回中文。
- * 其他文字类型故意返回 `null`，以保留用户自己选择的语言。
+ * 自动方向的判断结果。
+ * - 中文 / 英文：给出明确的中英互译方向，目标语言随之切换。
+ * - 其他语言：`from` 为 `auto`、`to` 为 `null`，即把源语言交给翻译源自动检测，
+ *   目标语言保持用户当前的选择。
+ * - 无法判断（空文本等）：返回 `null`，保留用户自己选择的语言。
  */
 export interface LanguageDirection {
-  from: "zh" | "en";
-  to: "zh" | "en";
+  from: "zh" | "en" | "auto";
+  /** 源语言为 auto 时目标语言保持不变，因此为 null。 */
+  to: "zh" | "en" | null;
 }
 
-const HAN = /[\u3400-\u4dbf\u4e00-\u9fff\u3005\u3007]/g;
-const KANA = /[\u3040-\u30ff\u31f0-\u31ff]/;
-const LATIN = /[A-Za-z]/g;
-/** 与中文、英文完全无关的文字类型；遇到它们时从不自动切换。 */
-const OTHER_SCRIPT =
-  /[\u0400-\u04ff\u0530-\u058f\u0590-\u05ff\u0600-\u06ff\u0e00-\u0e7f\uac00-\ud7af]/;
+const HAN = /\p{Script=Han}/gu;
+const LATIN = /\p{Script=Latin}/gu;
+/** 汉字、拉丁字母以外的任意字母：假名、谚文、西里尔、希腊、天城文等。 */
+const LETTER = /\p{L}/u;
 
 /**
  * 根据输入文本中汉字与拉丁字母的占比判断翻译方向。
- * 含日文假名或其他文字时返回 null，保留用户手动选择的语言。
+ * 出现汉字、拉丁字母以外的文字时，说明输入既不是中文也不是英文，
+ * 源语言交给翻译源自动检测。
  */
 export function detectDirection(text: string): LanguageDirection | null {
   const sample = text.trim();
   if (!sample) return null;
 
-  if (KANA.test(sample) || OTHER_SCRIPT.test(sample)) return null;
-
   const hanCount = sample.match(HAN)?.length ?? 0;
   const latinCount = sample.match(LATIN)?.length ?? 0;
+
+  if (LETTER.test(sample.replace(HAN, "").replace(LATIN, ""))) {
+    return { from: "auto", to: null };
+  }
 
   if (hanCount === 0 && latinCount === 0) return null;
   return hanCount >= latinCount ? { from: "zh", to: "en" } : { from: "en", to: "zh" };

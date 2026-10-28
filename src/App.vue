@@ -82,9 +82,8 @@ const canTranslate = computed(
 const sourceSpeakLang = computed(() => {
   if (!config.value) return "en";
   if (config.value.sourceLang !== "auto") return config.value.sourceLang;
-  return (
-    result.value?.from ?? detectDirection(text.value)?.from ?? "en"
-  );
+  const detected = detectDirection(text.value)?.from;
+  return result.value?.from ?? (detected && detected !== "auto" ? detected : "en");
 });
 
 onMounted(async () => {
@@ -192,6 +191,7 @@ async function updateConfig(patch: Partial<AppConfig>) {
 /**
  * 按输入文本推断的方向调整语言栏。该变更只保留在内存中：
  * 每次按键都写配置文件会很浪费，而且方向会随输入变化重新计算。
+ * 输入既非中文也非英文时，源语言切到"自动检测"，目标语言保持不变。
  */
 function applyAutoDirection() {
   if (!config.value?.autoDirection) return;
@@ -199,18 +199,20 @@ function applyAutoDirection() {
   if (!direction) return;
 
   const supported = new Set(activeProvider.value?.languages.map((l) => l.code));
-  if (!supported.has(direction.from) || !supported.has(direction.to)) return;
+  if (!supported.has(direction.from)) return;
+  if (direction.to && !supported.has(direction.to)) return;
 
+  const targetLang = direction.to ?? config.value.targetLang;
   if (
     config.value.sourceLang === direction.from &&
-    config.value.targetLang === direction.to
+    config.value.targetLang === targetLang
   ) {
     return;
   }
   config.value = {
     ...config.value,
     sourceLang: direction.from,
-    targetLang: direction.to,
+    targetLang,
   };
 }
 

@@ -167,7 +167,7 @@ onBeforeUnmount(() =>
               <span class="toggle-label">根据输入语言自动切换翻译语言</span>
               <p class="field-hint">
                 输入中文时目标语言自动设为英语，输入英语时自动设为中文；
-                其他语言保持手动选择。
+                其他语言则把源语言设为"自动检测"，由翻译源识别。
               </p>
             </div>
             <label class="switch">

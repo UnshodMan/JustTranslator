@@ -29,7 +29,7 @@ export interface AppConfig {
   activeProvider: string;
   sourceLang: string;
   targetLang: string;
-  /** 根据输入内容选择翻译方向：中文 <-> 英语。 */
+  /** 根据输入内容选择翻译方向：中英文互译，其他语言交给翻译源自动检测。 */
   autoDirection: boolean;
   /** 输入停止后自动触发翻译。 */
   autoTranslate: boolean;
