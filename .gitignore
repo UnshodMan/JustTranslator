@@ -1,0 +1,32 @@
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# 日志
+*.log
+logs/
+
+# 环境变量
+.env
+.env.*
+!.env.example
+
+# Rust / Tauri
+src-tauri/target/
+src-tauri/gen/schemas/
+
+# 测试 / 编译缓存
+coverage/
+*.tsbuildinfo
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 系统
+.DS_Store
+Thumbs.db
+desktop.ini
