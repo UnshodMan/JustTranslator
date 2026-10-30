@@ -16,10 +16,12 @@ import {
 } from "./api";
 import { detectDirection } from "./services/language-detect";
 import { openExternalUrl } from "./services/external-links";
+import { applyTheme } from "./services/theme";
 import type {
   AppConfig,
   ProviderCredentials,
   ProviderInfo,
+  ThemeMode,
   TranslateResponse,
 } from "./types";
 
@@ -107,6 +109,28 @@ const missingSettings = computed(() => {
 const canTranslate = computed(
   () => !loading.value && text.value.trim().length > 0 && !!config.value,
 );
+
+/** 主题切换按钮的循环顺序与文案。 */
+const themeOrder: ThemeMode[] = ["light", "dark", "system"];
+const themeLabels: Record<ThemeMode, string> = {
+  light: "明亮",
+  dark: "暗黑",
+  system: "跟随系统",
+};
+
+const currentTheme = computed<ThemeMode>(
+  () => config.value?.theme ?? "system",
+);
+
+// 配置加载完成后应用保存的主题；跟随系统时系统明暗变化由主题服务实时同步。
+watch(currentTheme, (mode) => applyTheme(mode), { immediate: true });
+
+/** 循环切换主题：明亮 → 暗黑 → 跟随系统。 */
+function cycleTheme() {
+  const index = themeOrder.indexOf(currentTheme.value);
+  const next = themeOrder[(index + 1) % themeOrder.length];
+  void updateConfig({ theme: next });
+}
 
 /**
  * 朗读原文面板时使用的语言：取配置的源语言，
@@ -506,6 +530,65 @@ async function handleSettingsSave(
           align="end"
           @update:model-value="changeProvider"
         />
+        <button
+          class="icon-btn"
+          type="button"
+          :title="`主题：${themeLabels[currentTheme]}，点击切换`"
+          :aria-label="`切换主题，当前${themeLabels[currentTheme]}`"
+          @click="cycleTheme"
+        >
+          <svg
+            v-if="currentTheme === 'light'"
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.7" />
+            <path
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"
+            />
+          </svg>
+          <svg
+            v-else-if="currentTheme === 'dark'"
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            aria-hidden="true"
+          >
+            <path
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11Z"
+            />
+          </svg>
+          <!-- 半明半暗表盘：左半太阳光芒、右半月相填充，示意跟随系统自动切换明暗 -->
+          <svg v-else viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <path d="M12 5a7 7 0 0 1 0 14Z" fill="currentColor" />
+            <circle
+              cx="12"
+              cy="12"
+              r="7"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+            />
+            <path
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              d="M12 2.6v1.6M5.4 5.4l1.1 1.1M2.6 12h1.6M5.4 18.6l1.1-1.1M12 19.8v1.6"
+            />
+          </svg>
+        </button>
         <button
           class="icon-btn"
           type="button"

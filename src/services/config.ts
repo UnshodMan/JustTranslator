@@ -14,6 +14,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   targetLang: "zh",
   autoDirection: true,
   autoTranslate: true,
+  theme: "system",
   speechEngine: "auto",
   speechRate: 1.0,
   autoSpeak: false,

@@ -29,6 +29,9 @@ export interface ProviderInfo {
 /** 文本朗读引擎：优先使用系统语音，或始终使用在线语音。 */
 export type SpeechEngine = "auto" | "system" | "online";
 
+/** 界面主题：明亮、暗黑或跟随系统。 */
+export type ThemeMode = "light" | "dark" | "system";
+
 /** 各翻译源的凭据，结构为 `翻译源 ID -> 字段 key -> 值`。 */
 export type ProviderCredentials = Record<string, Record<string, string>>;
 
@@ -40,6 +43,8 @@ export interface AppConfig {
   autoDirection: boolean;
   /** 输入停止后自动触发翻译。 */
   autoTranslate: boolean;
+  /** 界面主题：明亮、暗黑或跟随系统。 */
+  theme: ThemeMode;
   /** 朗读按钮使用的 TTS 引擎："auto" 在没有系统语音时回退到在线语音。 */
   speechEngine: SpeechEngine;
   /** 系统语音的播放速度，范围 0.6 - 1.4。 */

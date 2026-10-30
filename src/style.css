@@ -19,25 +19,25 @@
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0f1118;
-    --surface: #171a24;
-    --surface-muted: #1d2130;
-    --border: #262b3a;
-    --border-strong: #333a4d;
-    --text: #e8eaf3;
-    --text-muted: #9298ab;
-    --accent: #8285f2;
-    --accent-strong: #9698f7;
-    --accent-soft: rgba(130, 133, 242, 0.14);
-    --on-accent: #14151d;
-    --danger: #ff8177;
-    --danger-soft: rgba(255, 129, 119, 0.12);
-    --shadow: 0 14px 34px rgba(0, 0, 0, 0.4);
-    --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.25);
-    color-scheme: dark;
-  }
+/* 暗黑配色由 theme 服务在 <html data-theme="dark"> 上切换；
+   "跟随系统" 模式同样由该服务监听系统偏好后写入。 */
+:root[data-theme="dark"] {
+  --bg: #0f1118;
+  --surface: #171a24;
+  --surface-muted: #1d2130;
+  --border: #262b3a;
+  --border-strong: #333a4d;
+  --text: #e8eaf3;
+  --text-muted: #9298ab;
+  --accent: #8285f2;
+  --accent-strong: #9698f7;
+  --accent-soft: rgba(130, 133, 242, 0.14);
+  --on-accent: #14151d;
+  --danger: #ff8177;
+  --danger-soft: rgba(255, 129, 119, 0.12);
+  --shadow: 0 14px 34px rgba(0, 0, 0, 0.4);
+  --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.25);
+  color-scheme: dark;
 }
 
 * {

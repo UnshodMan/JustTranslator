@@ -10,6 +10,7 @@
 - 朗读：原文与译文均可一键朗读，默认朗读英语；支持系统语音（离线）与 Google 在线语音（音色自然），译文可自动朗读，语速可调。
 - 自动切换语言方向：输入中文时目标语言切到英语，输入英语时切到中文；输入其他语言时源语言切到"自动检测"，由翻译源识别源语言（可在语言栏的"自动切换"开关或设置中关闭）。
 - 自动翻译：停止输入后自动调用翻译接口，无需手动点击翻译按钮（可在设置中关闭）。
+- 主题切换：顶栏按钮一键循环切换明亮、暗黑、跟随系统，选择会保存到配置文件；跟随系统时实时响应系统明暗变化。
 - 翻译源凭据由设置界面配置，优先保存在系统钥匙串中；钥匙串不可用时自动回退为配置文件明文。
 - 翻译源通过统一接口注册，新增翻译源无需改动 Rust。
 
@@ -49,6 +50,7 @@
 │       ├── external-links.ts   # 用系统浏览器打开凭据申请与接口文档链接
 │       ├── language-detect.ts  # 根据输入内容自动识别语言方向
 │       ├── speech.ts           # 朗读：系统语音与 Google 在线语音双引擎
+│       ├── theme.ts            # 主题：明亮/暗黑/跟随系统的应用与系统偏好监听
 │       └── translator/
 │           ├── provider.ts     # 文本翻译源接口定义
 │           ├── index.ts        # 文本翻译源注册表
@@ -86,6 +88,7 @@
 - `src/services/credentials.ts`：通过 Tauri 命令读写系统钥匙串，按“翻译源 ID.字段 key”组织条目；文本与图片翻译源的凭据共用同一套读写逻辑。空值会删除对应条目，并负责把配置文件中的明文凭据同步回钥匙串。
 - `src/services/external-links.ts`：通过 Tauri opener 插件用系统默认浏览器打开外部链接；浏览器预览模式下退回 `window.open`。
 - `src/services/speech.ts`：朗读服务。系统引擎走 Web Speech API（离线、支持语速）；在线引擎调用 Google `translate_tts` 接口，按句切分后分段请求并顺序播放；`auto` 模式下系统无对应语言音色时自动回退在线。
+- `src/services/theme.ts`：主题服务。把明亮/暗黑/跟随系统设置解析为 `data-theme` 写到文档根节点，跟随系统时监听 `prefers-color-scheme` 变化实时切换；配置加载完成前先按系统主题渲染，避免闪烁。
 - `src-tauri/src/lib.rs`：Rust 侧只保留 Tauri 启动、`fs`、`http`、`opener` 插件注册，以及访问系统钥匙串的 `keychain_get`、`keychain_set`、`keychain_delete` 命令。
 - `src-tauri/capabilities/default.json`：声明前端所需的系统权限，例如各翻译源 API 域名访问、应用配置目录读写、下载目录写入与外部链接打开。
 
@@ -106,6 +109,7 @@
   "targetLang": "zh",
   "autoDirection": true,
   "autoTranslate": true,
+  "theme": "system",
   "speechEngine": "auto",
   "speechRate": 1.0,
   "autoSpeak": false,
