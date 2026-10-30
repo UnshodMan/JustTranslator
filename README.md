@@ -2,12 +2,11 @@
 
 基于 Tauri 2 + Vue 3 + TypeScript 的轻量跨平台翻译桌面应用。
 
-## 主界面
+## 界面
 
-<img width="1032" height="789" alt="image" src="https://github.com/user-attachments/assets/30ee82da-5822-477e-9041-5b96e76471d7" />
+![image-20261031033557290](doc/image/README/image-20261031033557290.png)
 
-<img width="1032" height="789" alt="image" src="https://github.com/user-attachments/assets/a2e3f185-6133-4bb1-b6b9-dc907998a77b" />
-
+![image-20261031033358680](doc/image/README/image-20261031033358680.png)
 
 ## 功能
 
@@ -23,15 +22,15 @@
 
 ## 技术栈
 
-| 层         | 技术                                                     |
-| ---------- | -------------------------------------------------------- |
-| 桌面外壳   | Tauri 2（Rust，仅负责启动、插件注册与钥匙串访问）        |
-| 前端       | Vue 3 + TypeScript + Vite                                |
-| 网络请求   | `@tauri-apps/plugin-http`（绕过 WebView 的 CORS 限制） |
-| 配置存储   | `@tauri-apps/plugin-fs`（写入系统应用配置目录）        |
-| 外部链接   | `@tauri-apps/plugin-opener`（用系统浏览器打开申请与文档链接） |
-| 凭据存储   | `keyring`（macOS Keychain / Windows 凭据管理器 / Linux Secret Service） |
-| 签名       | `js-md5`                                               |
+| 层    | 技术                                                               |
+| ---- | ---------------------------------------------------------------- |
+| 桌面外壳 | Tauri 2（Rust，仅负责启动、插件注册与钥匙串访问）                                   |
+| 前端   | Vue 3 + TypeScript + Vite                                        |
+| 网络请求 | `@tauri-apps/plugin-http`（绕过 WebView 的 CORS 限制）                  |
+| 配置存储 | `@tauri-apps/plugin-fs`（写入系统应用配置目录）                              |
+| 外部链接 | `@tauri-apps/plugin-opener`（用系统浏览器打开申请与文档链接）                     |
+| 凭据存储 | `keyring`（macOS Keychain / Windows 凭据管理器 / Linux Secret Service） |
+| 签名   | `js-md5`                                                         |
 
 ## 目录结构
 
@@ -172,18 +171,18 @@ npm run version:release -- 0.2.3 --yes  # 直接指定版本并跳过推送确�
 
 GitHub Actions 配置位于 `.github/workflows/build.yml`，可在一次运行中同时构建三个平台的安装包：
 
-| 平台    | Runner          | 产物                                        |
-| ------- | --------------- | ------------------------------------------- |
-| Linux   | `ubuntu-22.04`  | `.deb`、`.rpm`、`.AppImage`                 |
-| Windows | `windows-latest` | NSIS `.exe`                                  |
-| macOS   | `macos-latest`  | 通用架构（Apple Silicon + Intel）`.dmg`/`.app` |
+| 平台      | Runner           | 产物                                       |
+| ------- | ---------------- | ---------------------------------------- |
+| Linux   | `ubuntu-22.04`   | `.deb`、`.rpm`、`.AppImage`                |
+| Windows | `windows-latest` | NSIS `.exe`                              |
+| macOS   | `macos-latest`   | 通用架构（Apple Silicon + Intel）`.dmg`/`.app` |
 
 Windows 的 NSIS 安装程序（`-setup.exe`）内置英文与简体中文界面，默认跟随系统语言自动切换；系统语言不在列表中时回退英文。需要更多语言时，在 `src-tauri/tauri.conf.json` 的 `bundle.windows.nsis.languages` 数组中加入对应的 NSIS 语言名即可。
 
 触发方式：
 
 - 推送 `v*` 标签（如 `git tag v0.1.0 && git push origin v0.1.0`）：自动创建草稿 Release，并把各平台安装包上传到该 Release。
-- 在 Actions 页面手动触发 `Build`（workflow_dispatch）：安装包以 workflow artifacts 形式保留，可直接下载。
+- 在 Actions 页面手动触发 `Build`（workflow\_dispatch）：安装包以 workflow artifacts 形式保留，可直接下载。
 
 macOS 安装包为通用二进制，构建时同时安装 `aarch64-apple-darwin` 与 `x86_64-apple-darwin` 目标。当前产物未做代码签名（macOS 未公证、Windows 未签名），安装时系统可能提示来源未知；如需正式分发，需补充 Apple Developer ID、公证以及 Windows 代码签名证书对应的 secrets 与 `tauri.conf.json` 签名配置。
 
