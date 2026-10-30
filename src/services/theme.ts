@@ -5,10 +5,15 @@ let currentMode: ThemeMode = "system";
 
 const systemDarkQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
+/** 系统当前偏好的明暗模式，供主题切换按钮决定循环顺序。 */
+export function getSystemTheme(): "light" | "dark" {
+  return systemDarkQuery.matches ? "dark" : "light";
+}
+
 /** 把主题设置解析为实际渲染的明暗模式；未知值按跟随系统处理。 */
 function resolveEffectiveTheme(mode: ThemeMode): "light" | "dark" {
   if (mode === "light" || mode === "dark") return mode;
-  return systemDarkQuery.matches ? "dark" : "light";
+  return getSystemTheme();
 }
 
 /** 把主题写到文档根节点，由 CSS 变量切换明暗配色。 */

@@ -16,7 +16,7 @@ import {
 } from "./api";
 import { detectDirection } from "./services/language-detect";
 import { openExternalUrl } from "./services/external-links";
-import { applyTheme } from "./services/theme";
+import { applyTheme, getSystemTheme } from "./services/theme";
 import type {
   AppConfig,
   ProviderCredentials,
@@ -110,8 +110,7 @@ const canTranslate = computed(
   () => !loading.value && text.value.trim().length > 0 && !!config.value,
 );
 
-/** 主题切换按钮的循环顺序与文案。 */
-const themeOrder: ThemeMode[] = ["light", "dark", "system"];
+/** 主题切换按钮的文案。 */
 const themeLabels: Record<ThemeMode, string> = {
   light: "明亮",
   dark: "暗黑",
@@ -125,10 +124,20 @@ const currentTheme = computed<ThemeMode>(
 // 配置加载完成后应用保存的主题；跟随系统时系统明暗变化由主题服务实时同步。
 watch(currentTheme, (mode) => applyTheme(mode), { immediate: true });
 
-/** 循环切换主题：明亮 → 暗黑 → 跟随系统。 */
+/**
+ * 循环切换主题：跟随系统时优先切到系统当前明暗的反色，
+ * 再切到另一个明确主题，最后回到跟随系统。
+ * 例如系统为暗黑时顺序为：跟随系统 → 明亮 → 暗黑 → 跟随系统。
+ */
 function cycleTheme() {
-  const index = themeOrder.indexOf(currentTheme.value);
-  const next = themeOrder[(index + 1) % themeOrder.length];
+  const systemTheme = getSystemTheme();
+  const order: ThemeMode[] = [
+    "system",
+    systemTheme === "dark" ? "light" : "dark",
+    systemTheme,
+  ];
+  const index = order.indexOf(currentTheme.value);
+  const next = order[(index + 1) % order.length];
   void updateConfig({ theme: next });
 }
 
