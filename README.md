@@ -5,7 +5,7 @@
 ## 功能
 
 - 多翻译源支持：百度翻译（需 AppID/密钥）、Google 翻译、微软 Bing 翻译（后两者免登录、无需凭据）。
-- 图片翻译：基于百度图片翻译 API V2.0，入口仅在当前翻译源为百度翻译时显示；AppID 与文本翻译共用，只需额外配置 API Key。支持点击选择、拖拽或直接粘贴截图；可返回整图贴合的译文图片或仅返回识别与译文文本，译文图片可保存到系统下载目录。
+- 图片翻译：基于百度图片翻译 API V2.0，入口仅在当前翻译源为百度翻译时显示；AppID 与文本翻译共用，只需额外配置 API Key。支持点击选择、拖拽或直接粘贴截图；可返回整图贴合的译文图片或仅返回识别与译文文本，译文图片可保存到系统下载目录。原图与译文图片均支持点击在独立窗口中放大预览，可用滚轮缩放、左键拖拽平移。
 - 源语言自动检测、语言互换、译文分段展示与一键复制。
 - 朗读：原文与译文均可一键朗读，默认朗读英语；支持系统语音（离线）与 Google 在线语音（音色自然），译文可自动朗读，语速可调。
 - 自动切换语言方向：输入中文时目标语言切到英语，输入英语时切到中文；输入其他语言时源语言切到"自动检测"，由翻译源识别源语言（可在语言栏的"自动切换"开关或设置中关闭）。
@@ -35,8 +35,9 @@
 ├── vite.config.ts              # Vite 配置
 ├── tsconfig.json               # TypeScript 配置
 ├── src/                        # 前端与全部业务逻辑（TypeScript）
-│   ├── main.ts                 # Vue 应用挂载
+│   ├── main.ts                 # Vue 应用挂载入口，URL 带 ?preview 时挂载图片预览窗口页面
 │   ├── App.vue                 # 主界面：语言选择、翻译、复制、设置入口
+│   ├── ImagePreviewWindow.vue  # 图片预览独立窗口页面：滚轮缩放、左键拖拽平移
 │   ├── api.ts                  # 业务逻辑统一入口，供组件调用
 │   ├── types.ts                # 共享类型定义
 │   ├── style.css               # 全局样式
@@ -83,14 +84,15 @@
 - `src/services/translator/baidu-image.ts`：百度图片翻译 V2.0 实现。向 `https://fanyi-api.baidu.com/ait/api/picture/translate` 发送 JSON，使用 `Authorization: Bearer <API Key>` 鉴权，支持整图贴合与纯文本结果。
 - `src/services/translator/google.ts`：Google 翻译网页接口实现，使用 `translate_a/single` 免登录接口，无需凭据；需要网络可访问 Google。
 - `src/services/translator/microsoft.ts`：微软 Bing 翻译网页接口实现，从 `bing.com/translator` 页面获取短时令牌并缓存，无需凭据。
-- `src/components/ImageTranslator.vue`：图片翻译界面。支持点击选择、拖拽或粘贴图片，校验 PNG/JPG 与 5 MB 上限，调用图片翻译源并把贴合图片保存到系统下载目录。
+- `src/components/ImageTranslator.vue`：图片翻译界面。支持点击选择、拖拽或粘贴图片，校验 PNG/JPG 与 5 MB 上限，调用图片翻译源并把贴合图片保存到系统下载目录；原图与译文图片可点击在独立窗口中放大预览。
+- `src/ImagePreviewWindow.vue`：图片预览独立窗口页面。与主窗口共用同一入口页面（URL 带 `?preview` 时挂载），通过 localStorage 读取图片数据，支持滚轮缩放、左键拖拽平移，点击空白处或按 Esc 关闭窗口；浏览器预览模式下退回新标签页。
 - `src/services/config.ts`：负责 `config.json` 的读取与写入；配置缺失或损坏时回退到默认值。钥匙串不可用时，凭据会以 `providerSettings` 明文保存在该文件中。
 - `src/services/credentials.ts`：通过 Tauri 命令读写系统钥匙串，按“翻译源 ID.字段 key”组织条目；文本与图片翻译源的凭据共用同一套读写逻辑。空值会删除对应条目，并负责把配置文件中的明文凭据同步回钥匙串。
 - `src/services/external-links.ts`：通过 Tauri opener 插件用系统默认浏览器打开外部链接；浏览器预览模式下退回 `window.open`。
 - `src/services/speech.ts`：朗读服务。系统引擎走 Web Speech API（离线、支持语速）；在线引擎调用 Google `translate_tts` 接口，按句切分后分段请求并顺序播放；`auto` 模式下系统无对应语言音色时自动回退在线。
 - `src/services/theme.ts`：主题服务。把明亮/暗黑/跟随系统设置解析为 `data-theme` 写到文档根节点，跟随系统时监听 `prefers-color-scheme` 变化实时切换；配置加载完成前先按系统主题渲染，避免闪烁。
 - `src-tauri/src/lib.rs`：Rust 侧只保留 Tauri 启动、`fs`、`http`、`opener` 插件注册，以及访问系统钥匙串的 `keychain_get`、`keychain_set`、`keychain_delete` 命令。
-- `src-tauri/capabilities/default.json`：声明前端所需的系统权限，例如各翻译源 API 域名访问、应用配置目录读写、下载目录写入与外部链接打开。
+- `src-tauri/capabilities/default.json`：声明前端所需的系统权限，例如各翻译源 API 域名访问、应用配置目录读写、下载目录写入、外部链接打开，以及图片预览独立窗口的创建、聚焦、事件通信与关闭。
 
 ## 配置文件
 

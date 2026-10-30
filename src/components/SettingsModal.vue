@@ -135,6 +135,7 @@ onBeforeUnmount(() =>
         </section>
 
         <section v-if="showImageSection" class="section">
+          <h3 class="section-title">图片翻译凭据</h3>
           <div v-for="provider in imageProviders" :key="provider.id" class="image-provider">
 
             <div v-for="field in provider.fields" :key="field.key" class="field">

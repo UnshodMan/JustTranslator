@@ -61,7 +61,7 @@ const INFO: ProviderInfo = {
   id: "baidu-image",
   name: "百度大模型翻译（图片翻译）",
   description:
-    "百度大模型翻译（图片翻译） API V2.0，识别图片文字并翻译；AppID 与文本翻译共用，只需额外配置 API Key。",
+    "百度图片翻译 API V2.0，需额外配置 API Key。",
   fields: [
     {
       key: "apiKey",
@@ -77,10 +77,6 @@ const INFO: ProviderInfo = {
     {
       label: "创建 API Key",
       url: "https://fanyi-api.baidu.com/manage/apiKey",
-    },
-    {
-      label: "查看 AppID",
-      url: "https://fanyi-api.baidu.com/manage/developer",
     },
     { label: "接口文档", url: "https://fanyi-api.baidu.com/product/233" },
   ],

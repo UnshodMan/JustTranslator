@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { downloadDir, join } from "@tauri-apps/api/path";
+import { emitTo } from "@tauri-apps/api/event";
+import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { writeFile } from "@tauri-apps/plugin-fs";
 import { translateImage as translateImageApi } from "../api";
 import type {
@@ -231,6 +233,49 @@ function formatSize(bytes: number): string {
     ? `${(bytes / 1024 / 1024).toFixed(1)} MB`
     : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
+
+/** 预览窗口从 localStorage 读取图片数据，键名需与 ImagePreviewWindow 一致。 */
+const PREVIEW_STORAGE_KEY = "justtranslator-preview-image";
+const PREVIEW_LABEL = "image-preview";
+
+let browserPreviewWin: Window | null = null;
+
+/** 在独立窗口中打开图片预览；浏览器预览模式下退回新标签页。 */
+async function openPreview(imageSrc: string) {
+  if (!imageSrc) return;
+  try {
+    localStorage.setItem(PREVIEW_STORAGE_KEY, imageSrc);
+  } catch {
+    error.value = "图片过大，无法打开预览窗口";
+    return;
+  }
+
+  const url = `${window.location.pathname}?preview=1`;
+  try {
+    const existing = await WebviewWindow.getByLabel(PREVIEW_LABEL);
+    if (existing) {
+      await emitTo(PREVIEW_LABEL, "preview-reload", imageSrc);
+      await existing.setFocus();
+      return;
+    }
+    new WebviewWindow(PREVIEW_LABEL, {
+      url,
+      title: "图片预览",
+      width: 960,
+      height: 720,
+      minWidth: 360,
+      minHeight: 280,
+      center: true,
+    });
+  } catch {
+    if (browserPreviewWin && !browserPreviewWin.closed) {
+      browserPreviewWin.location.reload();
+      browserPreviewWin.focus();
+    } else {
+      browserPreviewWin = window.open(url, "_blank");
+    }
+  }
+}
 </script>
 
 <template>
@@ -275,6 +320,9 @@ function formatSize(bytes: number): string {
           class="source-image"
           :src="sourceDataUrl"
           alt="待翻译图片"
+          draggable="false"
+          title="点击放大预览"
+          @click.stop="openPreview(sourceDataUrl)"
         />
         <div v-else class="image-drop-hint">
           <svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true">
@@ -365,6 +413,9 @@ function formatSize(bytes: number): string {
             class="result-image"
             :src="result.pasteImage"
             alt="翻译后的图片"
+            draggable="false"
+            title="点击放大预览"
+            @click="openPreview(result.pasteImage)"
           />
           <div v-if="result.dst" class="result-text-block">
             <p class="result-text">{{ result.dst }}</p>

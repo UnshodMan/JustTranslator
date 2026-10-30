@@ -110,6 +110,8 @@ p {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex: 1;
+  min-width: 0;
 }
 
 .logo {
@@ -142,10 +144,13 @@ p {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex: 1;
+  justify-content: flex-end;
 }
 
 .mode-tabs {
   display: inline-flex;
+  flex: none;
   gap: 2px;
   padding: 3px;
   border: 1px solid var(--border);
@@ -618,6 +623,7 @@ p {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  cursor: zoom-in;
 }
 
 .image-drop-hint {
@@ -700,6 +706,52 @@ p {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface-muted);
+  cursor: zoom-in;
+}
+
+/* 图片预览独立窗口：滚轮缩放，左键拖拽平移。 */
+
+.preview-window {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #0d0f15;
+  cursor: grab;
+  user-select: none;
+}
+
+.preview-window.dragging {
+  cursor: grabbing;
+}
+
+.preview-window-img {
+  max-width: 92vw;
+  max-height: 90vh;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.4);
+  cursor: inherit;
+  will-change: transform;
+}
+
+.preview-window-empty {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+}
+
+.preview-window-hint {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .image-result .result-text {
@@ -914,16 +966,35 @@ kbd {
   overflow: auto;
 }
 
+.section {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
 .section + .section {
-  margin-top: 20px;
+  margin-top: 14px;
 }
 
 .section-title {
-  margin-bottom: 10px;
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.2px;
+}
+
+.section-title::before {
+  content: "";
+  flex-shrink: 0;
+  width: 3px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--accent);
 }
 
 .provider-cards {
