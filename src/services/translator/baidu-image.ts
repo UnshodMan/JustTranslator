@@ -61,14 +61,8 @@ const INFO: ProviderInfo = {
   id: "baidu-image",
   name: "百度大模型翻译（图片翻译）",
   description:
-    "百度大模型翻译（图片翻译） API V2.0，识别图片文字并翻译，需要 AppID 与 API Key。",
+    "百度大模型翻译（图片翻译） API V2.0，识别图片文字并翻译；AppID 与文本翻译共用，只需额外配置 API Key。",
   fields: [
-    {
-      key: "appId",
-      label: "AppID",
-      placeholder: "百度翻译开放平台的应用 AppID",
-      secret: false,
-    },
     {
       key: "apiKey",
       label: "API Key",
@@ -99,6 +93,8 @@ const INFO: ProviderInfo = {
  */
 export const baiduImageProvider: ImageTranslationProvider = {
   info: INFO,
+  /** 图片翻译与百度文本翻译共用 AppID，AppID 取自文本翻译的凭据。 */
+  credentialsFrom: "baidu",
 
   async translateImage(request, settings) {
     const image = stripDataUrl(request.image);
@@ -109,8 +105,8 @@ export const baiduImageProvider: ImageTranslationProvider = {
       throw "图片超出百度图片翻译的上限（5 MB）";
     }
 
-    const appId = requiredSetting(settings, "appId", "AppID");
-    const apiKey = requiredSetting(settings, "apiKey", "API Key");
+    const appId = requiredSetting(settings, "appId", "百度翻译 AppID（与文本翻译共用）");
+    const apiKey = requiredSetting(settings, "apiKey", "百度图片翻译 API Key");
 
     const from = toBaiduCode(request.from);
     if (!from) {
@@ -216,7 +212,7 @@ function requiredSetting(
 ): string {
   const value = settings[key]?.trim();
   if (!value) {
-    throw `尚未配置百度图片翻译 ${label}，请到设置中填写`;
+    throw `尚未配置${label}，请到设置中填写`;
   }
   return value;
 }

@@ -57,6 +57,14 @@ const activeProvider = computed(
   () => providers.value.find((p) => p.id === config.value?.activeProvider) ?? null,
 );
 const activeImageProvider = computed(() => imageProviders.value[0] ?? null);
+/**
+ * 图片翻译目前仅接入百度，且与百度文本翻译共用凭据，
+ * 因此只有当前翻译源为百度翻译时才显示图片翻译入口。
+ */
+const imageModeAvailable = computed(
+  () =>
+    imageProviders.value.length > 0 && config.value?.activeProvider === "baidu",
+);
 /** 当前模式下实际使用的翻译源。 */
 const currentProvider = computed(() =>
   mode.value === "image" ? activeImageProvider.value : activeProvider.value,
@@ -91,7 +99,9 @@ const missingSettings = computed(() => {
   const provider = currentProvider.value;
   if (!provider) return false;
   const values = credentials.value[provider.id] ?? {};
-  return provider.fields.some((field) => !values[field.key]?.trim());
+  if (provider.fields.some((field) => !values[field.key]?.trim())) return true;
+  // 图片翻译与百度文本翻译共用 AppID，缺失时同样提示去设置。
+  return mode.value === "image" && !credentials.value["baidu"]?.appId?.trim();
 });
 
 const canTranslate = computed(
@@ -344,6 +354,7 @@ function swapLanguages() {
 /** 切换文本/图片翻译；停止朗读并作废尚未完成的文本请求。 */
 function switchMode(next: WorkspaceMode) {
   if (mode.value === next) return;
+  if (next === "image" && !imageModeAvailable.value) return;
   haltSpeech();
   if (autoTranslateTimer) {
     clearTimeout(autoTranslateTimer);
@@ -440,6 +451,10 @@ async function handleSettingsSave(
     config.value = saved.config;
     credentials.value = nextCredentials;
     keychainAvailable.value = saved.keychainAvailable;
+    // 翻译源被改为非百度时图片翻译不可用，回到文本模式。
+    if (mode.value === "image" && !imageModeAvailable.value) {
+      mode.value = "text";
+    }
     if (autoDirectionJustEnabled) applyAutoDirection();
     result.value = null;
     settingsError.value = "";
@@ -471,6 +486,7 @@ async function handleSettingsSave(
           文本翻译
         </button>
         <button
+          v-if="imageModeAvailable"
           class="mode-tab"
           :class="{ active: mode === 'image' }"
           type="button"

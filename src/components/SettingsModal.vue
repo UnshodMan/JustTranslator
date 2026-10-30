@@ -45,6 +45,15 @@ const selectedProvider = computed(
   () => props.providers.find((p) => p.id === draft.value.activeProvider) ?? null,
 );
 
+/**
+ * 图片翻译目前仅接入百度，且与百度文本翻译共用凭据，
+ * 因此只在翻译源选择百度翻译时展示图片翻译的凭据配置。
+ */
+const showImageSection = computed(
+  () =>
+    props.imageProviders.length > 0 && draft.value.activeProvider === "baidu",
+);
+
 const speechEngineOptions: { value: SpeechEngine; label: string }[] = [
   { value: "auto", label: "自动（系统优先，无音色时在线）" },
   { value: "system", label: "系统语音（离线）" },
@@ -75,21 +84,10 @@ onBeforeUnmount(() =>
           <h2>设置</h2>
           <p class="dialog-sub">选择翻译源并填写对应凭据</p>
         </div>
-        <button
-          class="icon-btn"
-          type="button"
-          title="关闭"
-          aria-label="关闭"
-          @click="emit('close')"
-        >
+        <button class="icon-btn" type="button" title="关闭" aria-label="关闭" @click="emit('close')">
           <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-            <path
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.8"
-              stroke-linecap="round"
-              d="M6 6l12 12M18 6 6 18"
-            />
+            <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+              d="M6 6l12 12M18 6 6 18" />
           </svg>
         </button>
       </div>
@@ -98,20 +96,11 @@ onBeforeUnmount(() =>
         <section class="section">
           <h3 class="section-title">翻译源</h3>
           <div class="provider-cards">
-            <button
-              v-for="provider in providers"
-              :key="provider.id"
-              type="button"
-              class="provider-card"
-              :class="{ active: draft.activeProvider === provider.id }"
-              @click="draft.activeProvider = provider.id"
-            >
+            <button v-for="provider in providers" :key="provider.id" type="button" class="provider-card"
+              :class="{ active: draft.activeProvider === provider.id }" @click="draft.activeProvider = provider.id">
               <span class="provider-name">
                 {{ provider.name }}
-                <span
-                  v-if="draft.activeProvider === provider.id"
-                  class="badge"
-                >
+                <span v-if="draft.activeProvider === provider.id" class="badge">
                   当前
                 </span>
               </span>
@@ -127,77 +116,42 @@ onBeforeUnmount(() =>
             该翻译源无需填写凭据。
           </div>
 
-          <div
-            v-for="field in selectedProvider.fields"
-            :key="field.key"
-            class="field"
-          >
+          <div v-for="field in selectedProvider.fields" :key="field.key" class="field">
             <label :for="`${selectedProvider.id}-${field.key}`">
               {{ field.label }}
             </label>
-            <input
-              :id="`${selectedProvider.id}-${field.key}`"
-              v-model="draftCredentials[selectedProvider.id][field.key]"
-              :type="field.secret ? 'password' : 'text'"
-              :placeholder="field.placeholder"
-              autocomplete="off"
-              spellcheck="false"
-            />
+            <input :id="`${selectedProvider.id}-${field.key}`"
+              v-model="draftCredentials[selectedProvider.id][field.key]" :type="field.secret ? 'password' : 'text'"
+              :placeholder="field.placeholder" autocomplete="off" spellcheck="false" />
           </div>
 
-          <p
-            v-if="selectedProvider.helpLinks?.length"
-            class="help-links"
-          >
+          <p v-if="selectedProvider.helpLinks?.length" class="help-links">
             <span>申请与文档：</span>
-            <button
-              v-for="link in selectedProvider.helpLinks"
-              :key="link.url"
-              type="button"
-              class="link-btn"
-              @click="openExternalUrl(link.url)"
-            >
+            <button v-for="link in selectedProvider.helpLinks" :key="link.url" type="button" class="link-btn"
+              @click="openExternalUrl(link.url)">
               {{ link.label }}
             </button>
           </p>
         </section>
 
-        <section v-if="imageProviders.length" class="section">
-          <h3 class="section-title">图片翻译</h3>
-          <div
-            v-for="provider in imageProviders"
-            :key="provider.id"
-            class="image-provider"
-          >
-            <p class="field-hint image-provider-desc">
-              {{ provider.description }}
-            </p>
-            <div
-              v-for="field in provider.fields"
-              :key="field.key"
-              class="field"
-            >
+        <section v-if="showImageSection" class="section">
+          <div v-for="provider in imageProviders" :key="provider.id" class="image-provider">
+
+            <div v-for="field in provider.fields" :key="field.key" class="field">
               <label :for="`${provider.id}-${field.key}`">
                 {{ field.label }}
               </label>
-              <input
-                :id="`${provider.id}-${field.key}`"
-                v-model="draftCredentials[provider.id][field.key]"
-                :type="field.secret ? 'password' : 'text'"
-                :placeholder="field.placeholder"
-                autocomplete="off"
-                spellcheck="false"
-              />
+              <input :id="`${provider.id}-${field.key}`" v-model="draftCredentials[provider.id][field.key]"
+                :type="field.secret ? 'password' : 'text'" :placeholder="field.placeholder" autocomplete="off"
+                spellcheck="false" />
             </div>
+            <p class="field-hint image-provider-desc">
+              {{ provider.description }}
+            </p>
             <p v-if="provider.helpLinks?.length" class="help-links">
               <span>申请与文档：</span>
-              <button
-                v-for="link in provider.helpLinks"
-                :key="link.url"
-                type="button"
-                class="link-btn"
-                @click="openExternalUrl(link.url)"
-              >
+              <button v-for="link in provider.helpLinks" :key="link.url" type="button" class="link-btn"
+                @click="openExternalUrl(link.url)">
                 {{ link.label }}
               </button>
             </p>
@@ -247,28 +201,15 @@ onBeforeUnmount(() =>
                 Google 在线语音（需要联网）。
               </p>
             </div>
-            <AppSelect
-              class="speech-engine-select"
-              :model-value="draft.speechEngine"
-              :options="speechEngineOptions"
-              label="朗读引擎"
-              align="end"
-              @update:model-value="changeSpeechEngine"
-            />
+            <AppSelect class="speech-engine-select" :model-value="draft.speechEngine" :options="speechEngineOptions"
+              label="朗读引擎" align="end" @update:model-value="changeSpeechEngine" />
           </div>
 
           <div class="field">
             <label for="speech-rate">
               语速：{{ draft.speechRate.toFixed(1) }}x
             </label>
-            <input
-              id="speech-rate"
-              v-model.number="draft.speechRate"
-              type="range"
-              min="0.6"
-              max="1.4"
-              step="0.1"
-            />
+            <input id="speech-rate" v-model.number="draft.speechRate" type="range" min="0.6" max="1.4" step="0.1" />
             <p class="field-hint">仅对系统语音生效，在线语音固定为正常语速。</p>
           </div>
 
@@ -302,11 +243,7 @@ onBeforeUnmount(() =>
         <button class="ghost-btn" type="button" @click="emit('close')">
           取消
         </button>
-        <button
-          class="primary-btn"
-          type="button"
-          @click="emit('save', draft, draftCredentials)"
-        >
+        <button class="primary-btn" type="button" @click="emit('save', draft, draftCredentials)">
           保存设置
         </button>
       </div>

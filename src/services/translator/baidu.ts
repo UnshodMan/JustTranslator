@@ -26,7 +26,7 @@ interface BaiduResponse {
 const INFO: ProviderInfo = {
   id: "baidu",
   name: "百度翻译",
-  description: "百度翻译通用文本翻译 API，需要 AppID 和密钥。",
+  description: "百度翻译 API，需要 AppID 和密钥。",
   fields: [
     {
       key: "appId",

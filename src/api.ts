@@ -164,10 +164,16 @@ export async function translateImage(
   if (!provider) {
     throw `未知的图片翻译源：${request.provider}`;
   }
-  return provider.translateImage(
-    request,
-    await resolveSettings(provider.info),
-  );
+  const own = await resolveSettings(provider.info);
+  // 图片翻译源可与某个文本翻译源共用凭据（如百度图片翻译共用
+  // 文本翻译的 AppID）；同名凭据以文本翻译源的设置为准。
+  if (provider.credentialsFrom) {
+    const source = findProvider(provider.credentialsFrom);
+    if (source) {
+      Object.assign(own, await resolveSettings(source.info));
+    }
+  }
+  return provider.translateImage(request, own);
 }
 
 /** 返回配置文件的完整路径（系统应用配置目录下的 config.json）。 */
