@@ -10,7 +10,8 @@
     "tauri": "tauri",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "version:bump": "node scripts/bump-version.mjs"
+    "version:bump": "node scripts/bump-version.mjs",
+    "version:release": "node scripts/release.mjs"
   },
   "engines": {
     "node": ">=22.12.0"

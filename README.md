@@ -162,7 +162,16 @@ npm run version:bump -- major   # 0.1.0 -> 1.0.0
 npm run version:bump -- 0.2.3   # 直接指定版本
 ```
 
-脚本 [scripts/bump-version.mjs](scripts/bump-version.mjs) 会同时更新 `package.json`、`package-lock.json`、`src-tauri/Cargo.toml` 与 `src-tauri/Cargo.lock`。发布时先执行 bump，再提交改动并推送 `v` 前缀标签（如 `git tag v0.2.0 && git push origin v0.2.0`）。不要单独使用 `npm version`，否则 Rust 侧版本会不同步。
+脚本 [scripts/bump-version.mjs](scripts/bump-version.mjs) 会同时更新 `package.json`、`package-lock.json`、`src-tauri/Cargo.toml` 与 `src-tauri/Cargo.lock`。不要单独使用 `npm version`，否则 Rust 侧版本会不同步。
+
+发版推荐使用 [scripts/release.mjs](scripts/release.mjs) 一键完成：更新版本号后自动提交版本文件、创建 `v` 前缀标签并推送当前分支与标签（要求工作区干净，推送前需确认，传 `--yes` 可跳过确认）：
+
+```bash
+npm run version:release -- patch        # bump + 提交 + 打标签 v0.1.1 + 推送
+npm run version:release -- 0.2.3 --yes  # 直接指定版本并跳过推送确认
+```
+
+标签推送后会触发 GitHub Actions 创建草稿 Release（见下文）。仅更新版本号不发版时，继续使用 `version:bump`，之后手动提交并推送标签（如 `git tag v0.2.0 && git push origin v0.2.0`）即可。
 
 ## 持续集成与打包
 
