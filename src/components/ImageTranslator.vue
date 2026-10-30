@@ -17,6 +17,9 @@ const props = defineProps<{
 
 const MAX_BYTES = 5 * 1024 * 1024;
 
+/** 根据运行系统显示对应的粘贴快捷键。 */
+const pasteShortcut = /mac/i.test(navigator.userAgent) ? "⌘V" : "Ctrl+V";
+
 const fileInput = ref<HTMLInputElement | null>(null);
 const sourceDataUrl = ref("");
 const sourceBase64 = ref("");
@@ -284,7 +287,7 @@ function formatSize(bytes: number): string {
               d="M4 5.5h16v13H4zM4 14l4.5-4.5L14 15m-1.5-1.5 2.5-2.5L20 15M9 9.2a1.2 1.2 0 1 1-2.4 0 1.2 1.2 0 0 1 2.4 0Z"
             />
           </svg>
-          <p>点击选择图片，或拖拽、粘贴截图</p>
+          <p>点击选择图片，或拖拽、粘贴（{{ pasteShortcut }}）截图</p>
           <p class="field-hint">支持 PNG、JPG，最大 5 MB</p>
         </div>
       </div>
@@ -369,7 +372,7 @@ function formatSize(bytes: number): string {
           <p v-if="savedPath" class="field-hint image-saved">{{ savedPath }}</p>
         </template>
         <p v-else class="placeholder">
-          译文会显示在这里。整图贴合会返回翻译后的图片，仅文本则返回识别与译文。
+          选择“整图贴合”模式会返回翻译后的图片，“仅文本”则返回识别与译文。
         </p>
       </div>
     </section>
