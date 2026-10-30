@@ -4,7 +4,10 @@
 
 ## 主界面
 
-<img width="1032" height="789" alt="image" src="https://github.com/user-attachments/assets/90b6862f-c790-4b4e-9b90-427a74aca9df" />
+<img width="1032" height="789" alt="image" src="https://github.com/user-attachments/assets/30ee82da-5822-477e-9041-5b96e76471d7" />
+
+<img width="1032" height="789" alt="image" src="https://github.com/user-attachments/assets/a2e3f185-6133-4bb1-b6b9-dc907998a77b" />
+
 
 ## 功能
 
