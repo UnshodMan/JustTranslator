@@ -76,23 +76,11 @@
 ## 关键文件说明
 
 - `src/api.ts`：组件与业务逻辑之间的唯一入口，导出 `listProviders`、`listImageProviders`、`loadAppState`、`saveSettings`、`saveConfig`、`translate`、`translateImage`、`speak`、`stopSpeaking`、`getConfigFilePath`。
-- `src/services/translator/provider.ts`：文本翻译源接口，任何翻译源只需实现 `info` 和 `translate`。
-- `src/services/translator/index.ts`：文本翻译源注册表。新增翻译源时在此处加入数组即可。
-- `src/services/translator/image-provider.ts`：图片翻译源接口，实现 `info` 与 `translateImage`。
-- `src/services/translator/image-index.ts`：图片翻译源注册表，与文本翻译源分开，避免图片翻译源出现在文本翻译下拉框中。
-- `src/services/translator/baidu.ts`：百度翻译的完整实现，包括 `md5(appId + 文本 + salt + 密钥)` 签名、表单请求和错误码提示。
-- `src/services/translator/baidu-image.ts`：百度图片翻译 V2.0 实现。向 `https://fanyi-api.baidu.com/ait/api/picture/translate` 发送 JSON，使用 `Authorization: Bearer <API Key>` 鉴权，支持整图贴合与纯文本结果。
-- `src/services/translator/google.ts`：Google 翻译网页接口实现，使用 `translate_a/single` 免登录接口，无需凭据；需要网络可访问 Google。
-- `src/services/translator/microsoft.ts`：微软 Bing 翻译网页接口实现，从 `bing.com/translator` 页面获取短时令牌并缓存，无需凭据。
-- `src/components/ImageTranslator.vue`：图片翻译界面。支持点击选择、拖拽或粘贴图片，校验 PNG/JPG 与 5 MB 上限，调用图片翻译源并把贴合图片保存到系统下载目录；原图与译文图片可点击在独立窗口中放大预览。
-- `src/ImagePreviewWindow.vue`：图片预览独立窗口页面。与主窗口共用同一入口页面（URL 带 `?preview` 时挂载），通过 localStorage 读取图片数据，支持滚轮缩放、左键拖拽平移，点击空白处或按 Esc 关闭窗口；浏览器预览模式下退回新标签页。
-- `src/services/config.ts`：负责 `config.json` 的读取与写入；配置缺失或损坏时回退到默认值。钥匙串不可用时，凭据会以 `providerSettings` 明文保存在该文件中。
+- `src/services/translator/provider.ts`：文本翻译源接口，任何翻译源只需实现 `info` 和 `translate`，并在 `index.ts` 的 `providers` 数组中注册。
+- `src/services/translator/image-provider.ts`：图片翻译源接口，实现 `info` 与 `translateImage`；注册表与文本翻译源分开（`image-index.ts`），避免图片翻译源出现在文本翻译下拉框中。
+- `src/ImagePreviewWindow.vue`：图片预览独立窗口页面。与主窗口共用同一入口页面（URL 带 `?preview` 时挂载），通过 localStorage 读取图片数据，点击空白处或按 Esc 关闭窗口；浏览器预览模式下退回新标签页。
 - `src/services/credentials.ts`：通过 Tauri 命令读写系统钥匙串，按“翻译源 ID.字段 key”组织条目；文本与图片翻译源的凭据共用同一套读写逻辑。空值会删除对应条目，并负责把配置文件中的明文凭据同步回钥匙串。
-- `src/services/external-links.ts`：通过 Tauri opener 插件用系统默认浏览器打开外部链接；浏览器预览模式下退回 `window.open`。
-- `src/services/speech.ts`：朗读服务。系统引擎走 Web Speech API（离线、支持语速）；在线引擎调用 Google `translate_tts` 接口，按句切分后分段请求并顺序播放；`auto` 模式下系统无对应语言音色时自动回退在线。
-- `src/services/theme.ts`：主题服务。把明亮/暗黑/跟随系统设置解析为 `data-theme` 写到文档根节点，跟随系统时监听 `prefers-color-scheme` 变化实时切换；配置加载完成前先按系统主题渲染，避免闪烁。
-- `src-tauri/src/lib.rs`：Rust 侧只保留 Tauri 启动、`fs`、`http`、`opener` 插件注册，以及访问系统钥匙串的 `keychain_get`、`keychain_set`、`keychain_delete` 命令。
-- `src-tauri/capabilities/default.json`：声明前端所需的系统权限，例如各翻译源 API 域名访问、应用配置目录读写、下载目录写入、外部链接打开，以及图片预览独立窗口的创建、聚焦、事件通信与关闭。
+- `src/services/speech.ts`：系统引擎走 Web Speech API（离线、支持语速）；在线引擎调用 Google `translate_tts` 接口，按句切分后分段请求并顺序播放；`auto` 模式下系统无对应语言音色时自动回退在线。
 
 ## 配置文件
 
