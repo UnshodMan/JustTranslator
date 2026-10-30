@@ -2,6 +2,10 @@
 
 基于 Tauri 2 + Vue 3 + TypeScript 的轻量跨平台翻译桌面应用。
 
+## 主界面
+
+<img width="1032" height="789" alt="image" src="https://github.com/user-attachments/assets/90b6862f-c790-4b4e-9b90-427a74aca9df" />
+
 ## 功能
 
 - 多翻译源支持：百度翻译（需 AppID/密钥）、Google 翻译、微软 Bing 翻译（后两者免登录、无需凭据）。
