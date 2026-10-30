@@ -5,6 +5,7 @@
 ## 功能
 
 - 多翻译源支持：百度翻译（需 AppID/密钥）、Google 翻译、微软 Bing 翻译（后两者免登录、无需凭据）。
+- 图片翻译：基于百度图片翻译 API V2.0（需 AppID 与 API Key），支持点击选择、拖拽或直接粘贴截图；可返回整图贴合的译文图片或仅返回识别与译文文本，译文图片可保存到系统下载目录。
 - 源语言自动检测、语言互换、译文分段展示与一键复制。
 - 朗读：原文与译文均可一键朗读，默认朗读英语；支持系统语音（离线）与 Google 在线语音（音色自然），译文可自动朗读，语速可调。
 - 自动切换语言方向：输入中文时目标语言切到英语，输入英语时切到中文；输入其他语言时源语言切到"自动检测"，由翻译源识别源语言（可在语言栏的"自动切换"开关或设置中关闭）。
@@ -20,6 +21,7 @@
 | 前端       | Vue 3 + TypeScript + Vite                                |
 | 网络请求   | `@tauri-apps/plugin-http`（绕过 WebView 的 CORS 限制） |
 | 配置存储   | `@tauri-apps/plugin-fs`（写入系统应用配置目录）        |
+| 外部链接   | `@tauri-apps/plugin-opener`（用系统浏览器打开申请与文档链接） |
 | 凭据存储   | `keyring`（macOS Keychain / Windows 凭据管理器 / Linux Secret Service） |
 | 签名       | `js-md5`                                               |
 
@@ -39,19 +41,24 @@
 │   ├── style.css               # 全局样式
 │   ├── components/
 │   │   ├── AppSelect.vue        # 自定义下拉组件：替代原生 select，统一弹出列表样式
-│   │   └── SettingsModal.vue    # 设置弹窗：翻译源、凭据、朗读
+│   │   ├── ImageTranslator.vue  # 图片翻译：选择/拖拽/粘贴图片、贴合方式与译文图片保存
+│   │   └── SettingsModal.vue    # 设置弹窗：翻译源、图片翻译凭据、朗读
 │   └── services/
 │       ├── config.ts           # 配置的读取、默认值与持久化（不含凭据）
 │       ├── credentials.ts      # 翻译源凭据的钥匙串读写与旧数据迁移
+│       ├── external-links.ts   # 用系统浏览器打开凭据申请与接口文档链接
 │       ├── language-detect.ts  # 根据输入内容自动识别语言方向
 │       ├── speech.ts           # 朗读：系统语音与 Google 在线语音双引擎
 │       └── translator/
-│           ├── provider.ts     # 翻译源接口定义
-│           ├── index.ts        # 翻译源注册表
+│           ├── provider.ts     # 文本翻译源接口定义
+│           ├── index.ts        # 文本翻译源注册表
 │           ├── languages.ts    # 通用语言代码与名称
 │           ├── baidu.ts        # 百度翻译实现（签名、请求、错误码映射）
 │           ├── google.ts       # Google 翻译实现（免登录网页接口）
-│           └── microsoft.ts    # 微软 Bing 翻译实现（免登录网页接口）
+│           ├── microsoft.ts    # 微软 Bing 翻译实现（免登录网页接口）
+│           ├── image-provider.ts # 图片翻译源接口定义
+│           ├── image-index.ts  # 图片翻译源注册表
+│           └── baidu-image.ts  # 百度图片翻译 V2.0 实现（Bearer 鉴权、贴合图与分段）
 └── src-tauri/                  # Tauri 桌面外壳
     ├── Cargo.toml              # Rust 依赖
     ├── tauri.conf.json         # 窗口、打包、构建配置
@@ -65,17 +72,22 @@
 
 ## 关键文件说明
 
-- `src/api.ts`：组件与业务逻辑之间的唯一入口，导出 `listProviders`、`loadAppState`、`saveSettings`、`saveConfig`、`translate`、`speak`、`stopSpeaking`、`getConfigFilePath`。
-- `src/services/translator/provider.ts`：翻译源接口，任何翻译源只需实现 `info` 和 `translate`。
-- `src/services/translator/index.ts`：翻译源注册表。新增翻译源时在此处加入数组即可。
+- `src/api.ts`：组件与业务逻辑之间的唯一入口，导出 `listProviders`、`listImageProviders`、`loadAppState`、`saveSettings`、`saveConfig`、`translate`、`translateImage`、`speak`、`stopSpeaking`、`getConfigFilePath`。
+- `src/services/translator/provider.ts`：文本翻译源接口，任何翻译源只需实现 `info` 和 `translate`。
+- `src/services/translator/index.ts`：文本翻译源注册表。新增翻译源时在此处加入数组即可。
+- `src/services/translator/image-provider.ts`：图片翻译源接口，实现 `info` 与 `translateImage`。
+- `src/services/translator/image-index.ts`：图片翻译源注册表，与文本翻译源分开，避免图片翻译源出现在文本翻译下拉框中。
 - `src/services/translator/baidu.ts`：百度翻译的完整实现，包括 `md5(appId + 文本 + salt + 密钥)` 签名、表单请求和错误码提示。
+- `src/services/translator/baidu-image.ts`：百度图片翻译 V2.0 实现。向 `https://fanyi-api.baidu.com/ait/api/picture/translate` 发送 JSON，使用 `Authorization: Bearer <API Key>` 鉴权，支持整图贴合与纯文本结果。
 - `src/services/translator/google.ts`：Google 翻译网页接口实现，使用 `translate_a/single` 免登录接口，无需凭据；需要网络可访问 Google。
 - `src/services/translator/microsoft.ts`：微软 Bing 翻译网页接口实现，从 `bing.com/translator` 页面获取短时令牌并缓存，无需凭据。
+- `src/components/ImageTranslator.vue`：图片翻译界面。支持点击选择、拖拽或粘贴图片，校验 PNG/JPG 与 5 MB 上限，调用图片翻译源并把贴合图片保存到系统下载目录。
 - `src/services/config.ts`：负责 `config.json` 的读取与写入；配置缺失或损坏时回退到默认值。钥匙串不可用时，凭据会以 `providerSettings` 明文保存在该文件中。
-- `src/services/credentials.ts`：通过 Tauri 命令读写系统钥匙串，按“翻译源 ID.字段 key”组织条目；空值会删除对应条目，并负责把配置文件中的明文凭据同步回钥匙串。
+- `src/services/credentials.ts`：通过 Tauri 命令读写系统钥匙串，按“翻译源 ID.字段 key”组织条目；文本与图片翻译源的凭据共用同一套读写逻辑。空值会删除对应条目，并负责把配置文件中的明文凭据同步回钥匙串。
+- `src/services/external-links.ts`：通过 Tauri opener 插件用系统默认浏览器打开外部链接；浏览器预览模式下退回 `window.open`。
 - `src/services/speech.ts`：朗读服务。系统引擎走 Web Speech API（离线、支持语速）；在线引擎调用 Google `translate_tts` 接口，按句切分后分段请求并顺序播放；`auto` 模式下系统无对应语言音色时自动回退在线。
-- `src-tauri/src/lib.rs`：Rust 侧只保留 Tauri 启动、`fs`、`http` 插件注册，以及访问系统钥匙串的 `keychain_get`、`keychain_set`、`keychain_delete` 命令。
-- `src-tauri/capabilities/default.json`：声明前端所需的系统权限，例如各翻译源 API 域名访问、应用配置目录读写。
+- `src-tauri/src/lib.rs`：Rust 侧只保留 Tauri 启动、`fs`、`http`、`opener` 插件注册，以及访问系统钥匙串的 `keychain_get`、`keychain_set`、`keychain_delete` 命令。
+- `src-tauri/capabilities/default.json`：声明前端所需的系统权限，例如各翻译源 API 域名访问、应用配置目录读写、下载目录写入与外部链接打开。
 
 ## 配置文件
 
@@ -96,7 +108,9 @@
   "autoTranslate": true,
   "speechEngine": "auto",
   "speechRate": 1.0,
-  "autoSpeak": false
+  "autoSpeak": false,
+  "imageSourceLang": "auto",
+  "imageTargetLang": "zh"
 }
 ```
 
@@ -107,6 +121,16 @@
 - Linux：Secret Service（GNOME Keyring、KWallet 等）
 
 若系统钥匙串不可用，应用会自动降级为明文保存：凭据写入 `config.json` 的 `providerSettings` 字段，翻译功能保持可用。之后钥匙串恢复可用时，明文凭据会自动同步回钥匙串并从配置文件中移除。旧版配置文件中的 `providerSettings` 也会按同样方式迁移。
+
+## 图片翻译
+
+图片翻译目前只注册了百度图片翻译 API V2.0：没有稳定、公开且免登录的图片翻译网页接口，因此未添加其他图片翻译源。
+
+- 接口地址：`https://fanyi-api.baidu.com/ait/api/picture/translate`，`POST` + JSON，`Authorization: Bearer <API Key>`。
+- 凭据：百度翻译开放平台的 AppID 与 API Key（在管理控制台的 APIKey 管理中创建），与文本翻译的 AppID/密钥分开保存。
+- 限制：仅支持 PNG、JPG，原图不超过 5 MB。
+- 模式：整图贴合返回翻译后的图片，仅文本返回识别与译文；图片翻译结果可保存到系统下载目录（`$DOWNLOAD`），浏览器预览模式下退回浏览器下载。
+- 未配置凭据时，文本翻译与图片翻译的提示栏、设置弹窗都会显示百度官方的“开通服务 / 创建 API Key / 查看 AppID / 接口文档”链接，点击后用系统浏览器打开。
 
 ## 开发与构建
 
@@ -155,9 +179,17 @@ macOS 安装包为通用二进制，构建时同时安装 `aarch64-apple-darwin`
 
 ## 新增翻译源
 
+文本翻译源：
+
 1. 在 `src/services/translator/` 下新建文件，实现 `TranslationProvider` 接口。
 2. 在 `src/services/translator/index.ts` 的 `providers` 数组中注册。
 3. 若需要访问新的 API 域名，在 `src-tauri/capabilities/default.json` 的 `http:default` 允许列表中加入对应 URL。
+
+图片翻译源：
+
+1. 实现 `src/services/translator/image-provider.ts` 中的 `ImageTranslationProvider` 接口。
+2. 在 `src/services/translator/image-index.ts` 的 `imageProviders` 数组中注册；凭据会自动出现在设置弹窗的“图片翻译”区块。
+3. 同样把 API 域名加入 `http:default` 允许列表。
 
 前端设置界面会根据 `ProviderInfo.fields` 自动渲染凭据表单，无需额外改造。
 

@@ -17,6 +17,8 @@ export const DEFAULT_CONFIG: AppConfig = {
   speechEngine: "auto",
   speechRate: 1.0,
   autoSpeak: false,
+  imageSourceLang: "auto",
+  imageTargetLang: "zh",
 };
 
 let configPath: Promise<string> | null = null;

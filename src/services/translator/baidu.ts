@@ -43,6 +43,14 @@ const INFO: ProviderInfo = {
   ],
   languages: LANGUAGES,
   supportsAutoDetect: true,
+  helpLinks: [
+    { label: "开通服务", url: "https://fanyi-api.baidu.com/choose" },
+    {
+      label: "查看 AppID / 密钥",
+      url: "https://fanyi-api.baidu.com/manage/developer",
+    },
+    { label: "接口文档", url: "https://fanyi-api.baidu.com/doc/23" },
+  ],
 };
 
 /**

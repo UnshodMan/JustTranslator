@@ -10,6 +10,11 @@ export interface SettingsField {
   secret: boolean;
 }
 
+export interface ProviderHelpLink {
+  label: string;
+  url: string;
+}
+
 export interface ProviderInfo {
   id: string;
   name: string;
@@ -17,6 +22,8 @@ export interface ProviderInfo {
   fields: SettingsField[];
   languages: LanguageInfo[];
   supportsAutoDetect: boolean;
+  /** 凭据申请、密钥管理与接口文档链接。 */
+  helpLinks?: ProviderHelpLink[];
 }
 
 /** 文本朗读引擎：优先使用系统语音，或始终使用在线语音。 */
@@ -39,6 +46,10 @@ export interface AppConfig {
   speechRate: number;
   /** 译文返回后自动朗读。 */
   autoSpeak: boolean;
+  /** 图片翻译的源语言。 */
+  imageSourceLang: string;
+  /** 图片翻译的目标语言。 */
+  imageTargetLang: string;
   /**
    * 系统钥匙串不可用时，退化为明文保存在配置文件中的凭据。
    * 钥匙串可用时该字段不会出现在配置文件中。
@@ -64,4 +75,47 @@ export interface TranslateResponse {
   to: string;
   text: string;
   segments: Segment[];
+}
+
+/** 图片贴合方式：0 仅返回文本，1 返回整图贴合，2 返回分块贴合，3 仅返回坐标。 */
+export type ImagePasteMode = 0 | 1 | 2 | 3;
+
+export interface ImageTranslateRequest {
+  provider: string;
+  /** 原始图片的 Base64 数据，不带 data URL 前缀。 */
+  image: string;
+  from: string;
+  to: string;
+  paste: ImagePasteMode;
+  /** 0 通用擦除，1 高精擦除。 */
+  viewType: 0 | 1;
+}
+
+export interface ImagePoint {
+  x: number;
+  y: number;
+}
+
+export interface ImageSegment {
+  src: string;
+  dst: string;
+  /** 文字区域坐标：left,top,width,height。 */
+  rect?: string;
+  lineCount?: number;
+  points?: ImagePoint[];
+  /** 分块贴合的 Base64 图片，仅 paste=2 时返回。 */
+  blockImage?: string;
+}
+
+export interface ImageTranslateResponse {
+  provider: string;
+  from: string;
+  to: string;
+  /** 全文原文。 */
+  src: string;
+  /** 全文译文。 */
+  dst: string;
+  segments: ImageSegment[];
+  /** 整图贴合的 data URL，仅 paste=1 时返回。 */
+  pasteImage?: string;
 }

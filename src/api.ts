@@ -17,8 +17,14 @@ import {
   findProvider,
   listProviders as listProviderInfos,
 } from "./services/translator";
+import {
+  findImageProvider,
+  listImageProviders as listImageProviderInfos,
+} from "./services/translator/image-index";
 import type {
   AppConfig,
+  ImageTranslateRequest,
+  ImageTranslateResponse,
   ProviderCredentials,
   ProviderInfo,
   TranslateRequest,
@@ -28,6 +34,15 @@ import type {
 /** 列出全部已注册翻译源的元信息，供界面展示与语言列表使用。 */
 export const listProviders = async (): Promise<ProviderInfo[]> =>
   listProviderInfos();
+
+/** 列出全部已注册图片翻译源的元信息。 */
+export const listImageProviders = async (): Promise<ProviderInfo[]> =>
+  listImageProviderInfos();
+
+/** 文本与图片翻译源的合集，用于统一读写凭据。 */
+function allProviderInfos(): ProviderInfo[] {
+  return [...listProviderInfos(), ...listImageProviderInfos()];
+}
 
 /** 应用启动时解析出的配置与凭据。 */
 export interface AppState {
@@ -43,7 +58,7 @@ export interface AppState {
  * 同步明文凭据并清除配置文件中的明文。
  */
 export async function loadAppState(): Promise<AppState> {
-  const providers = listProviderInfos();
+  const providers = allProviderInfos();
   let config = await loadConfig();
   const plaintext = config.providerSettings;
 
@@ -88,7 +103,7 @@ export async function saveSettings(
 ): Promise<SaveSettingsResult> {
   let keychainAvailable = true;
   try {
-    await writeAllCredentials(listProviderInfos(), credentials);
+    await writeAllCredentials(allProviderInfos(), credentials);
   } catch {
     keychainAvailable = false;
   }
@@ -109,9 +124,28 @@ export async function saveConfig(config: AppConfig): Promise<AppConfig> {
 }
 
 /**
- * 按请求中的翻译源 ID 找到对应实现，优先使用钥匙串中的凭据；
- * 钥匙串不可用或部分字段为空时，用配置文件明文补齐。
+ * 读取某个翻译源的凭据：优先使用钥匙串，钥匙串不可用或
+ * 部分字段为空时，用配置文件明文补齐。
  */
+async function resolveSettings(
+  info: ProviderInfo,
+): Promise<Record<string, string>> {
+  const config = await loadConfig();
+  const settings: Record<string, string> = {
+    ...(config.providerSettings?.[info.id] ?? {}),
+  };
+  try {
+    const keychainSettings = await readProviderCredentials(info);
+    for (const [key, value] of Object.entries(keychainSettings)) {
+      if (value.trim()) settings[key] = value;
+    }
+  } catch {
+    // 钥匙串不可用，直接使用配置文件中的明文凭据。
+  }
+  return settings;
+}
+
+/** 按请求中的翻译源 ID 找到对应实现并执行文本翻译。 */
 export async function translate(
   request: TranslateRequest,
 ): Promise<TranslateResponse> {
@@ -119,20 +153,21 @@ export async function translate(
   if (!provider) {
     throw `未知的翻译源：${request.provider}`;
   }
+  return provider.translate(request, await resolveSettings(provider.info));
+}
 
-  const config = await loadConfig();
-  const settings: Record<string, string> = {
-    ...(config.providerSettings?.[provider.info.id] ?? {}),
-  };
-  try {
-    const keychainSettings = await readProviderCredentials(provider.info);
-    for (const [key, value] of Object.entries(keychainSettings)) {
-      if (value.trim()) settings[key] = value;
-    }
-  } catch {
-    // 钥匙串不可用，直接使用配置文件中的明文凭据。
+/** 按请求中的图片翻译源 ID 找到对应实现并执行图片翻译。 */
+export async function translateImage(
+  request: ImageTranslateRequest,
+): Promise<ImageTranslateResponse> {
+  const provider = findImageProvider(request.provider);
+  if (!provider) {
+    throw `未知的图片翻译源：${request.provider}`;
   }
-  return provider.translate(request, settings);
+  return provider.translateImage(
+    request,
+    await resolveSettings(provider.info),
+  );
 }
 
 /** 返回配置文件的完整路径（系统应用配置目录下的 config.json）。 */

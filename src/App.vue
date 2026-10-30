@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import AppSelect from "./components/AppSelect.vue";
+import ImageTranslator from "./components/ImageTranslator.vue";
 import SettingsModal from "./components/SettingsModal.vue";
 import {
   getConfigFilePath,
+  listImageProviders,
   listProviders,
   loadAppState,
   saveConfig,
@@ -13,6 +15,7 @@ import {
   translate as translateApi,
 } from "./api";
 import { detectDirection } from "./services/language-detect";
+import { openExternalUrl } from "./services/external-links";
 import type {
   AppConfig,
   ProviderCredentials,
@@ -20,7 +23,12 @@ import type {
   TranslateResponse,
 } from "./types";
 
+/** 当前工作模式：文本翻译或图片翻译。 */
+type WorkspaceMode = "text" | "image";
+
 const providers = ref<ProviderInfo[]>([]);
+const imageProviders = ref<ProviderInfo[]>([]);
+const mode = ref<WorkspaceMode>("text");
 const config = ref<AppConfig | null>(null);
 const credentials = ref<ProviderCredentials>({});
 /** 系统钥匙串是否可用；不可用时凭据来自配置文件明文。 */
@@ -48,10 +56,25 @@ let speakSeq = 0;
 const activeProvider = computed(
   () => providers.value.find((p) => p.id === config.value?.activeProvider) ?? null,
 );
+const activeImageProvider = computed(() => imageProviders.value[0] ?? null);
+/** 当前模式下实际使用的翻译源。 */
+const currentProvider = computed(() =>
+  mode.value === "image" ? activeImageProvider.value : activeProvider.value,
+);
 
-const sourceLanguages = computed(() => activeProvider.value?.languages ?? []);
+const sourceLanguages = computed(() => currentProvider.value?.languages ?? []);
 const targetLanguages = computed(() =>
-  (activeProvider.value?.languages ?? []).filter((l) => l.code !== "auto"),
+  (currentProvider.value?.languages ?? []).filter((l) => l.code !== "auto"),
+);
+const currentSourceLang = computed(() =>
+  mode.value === "image"
+    ? config.value?.imageSourceLang ?? "auto"
+    : config.value?.sourceLang ?? "auto",
+);
+const currentTargetLang = computed(() =>
+  mode.value === "image"
+    ? config.value?.imageTargetLang ?? "zh"
+    : config.value?.targetLang ?? "zh",
 );
 
 const providerOptions = computed(() =>
@@ -65,7 +88,7 @@ const targetOptions = computed(() =>
 );
 
 const missingSettings = computed(() => {
-  const provider = activeProvider.value;
+  const provider = currentProvider.value;
   if (!provider) return false;
   const values = credentials.value[provider.id] ?? {};
   return provider.fields.some((field) => !values[field.key]?.trim());
@@ -88,13 +111,19 @@ const sourceSpeakLang = computed(() => {
 
 onMounted(async () => {
   try {
-    const [providerList, state, path] = await Promise.all([
+    const [providerList, imageProviderList, state, path] = await Promise.all([
       listProviders(),
+      listImageProviders(),
       loadAppState(),
       getConfigFilePath(),
     ]);
     providers.value = providerList;
-    config.value = normalizeConfig(state.config, providerList);
+    imageProviders.value = imageProviderList;
+    config.value = normalizeConfig(
+      state.config,
+      providerList,
+      imageProviderList,
+    );
     credentials.value = state.credentials;
     keychainAvailable.value = state.keychainAvailable;
     configPath.value = path;
@@ -156,22 +185,42 @@ function toggleSpeak(which: "source" | "result") {
 }
 
 /** 确保存储的语言代码对当前启用的翻译源始终合法。 */
-function normalizeConfig(input: AppConfig, list: ProviderInfo[]): AppConfig {
+function normalizeConfig(
+  input: AppConfig,
+  list: ProviderInfo[],
+  imageList: ProviderInfo[],
+): AppConfig {
   const next: AppConfig = JSON.parse(JSON.stringify(input));
   const provider =
     list.find((p) => p.id === next.activeProvider) ?? list[0] ?? null;
-  if (!provider) return next;
-
-  next.activeProvider = provider.id;
-  if (!provider.languages.some((l) => l.code === next.sourceLang)) {
-    next.sourceLang = "auto";
+  if (provider) {
+    next.activeProvider = provider.id;
+    if (!provider.languages.some((l) => l.code === next.sourceLang)) {
+      next.sourceLang = "auto";
+    }
+    if (
+      !provider.languages.some(
+        (l) => l.code === next.targetLang && l.code !== "auto",
+      )
+    ) {
+      next.targetLang =
+        provider.languages.find((l) => l.code !== "auto")?.code ?? "zh";
+    }
   }
-  if (
-    !provider.languages.some(
-      (l) => l.code === next.targetLang && l.code !== "auto",
-    )
-  ) {
-    next.targetLang = provider.languages.find((l) => l.code !== "auto")?.code ?? "zh";
+
+  const imageProvider = imageList[0] ?? null;
+  if (imageProvider) {
+    if (!imageProvider.languages.some((l) => l.code === next.imageSourceLang)) {
+      next.imageSourceLang = "auto";
+    }
+    if (
+      !imageProvider.languages.some(
+        (l) => l.code === next.imageTargetLang && l.code !== "auto",
+      )
+    ) {
+      next.imageTargetLang =
+        imageProvider.languages.find((l) => l.code !== "auto")?.code ?? "zh";
+    }
   }
   return next;
 }
@@ -194,6 +243,7 @@ async function updateConfig(patch: Partial<AppConfig>) {
  * 输入既非中文也非英文时，源语言切到"自动检测"，目标语言保持不变。
  */
 function applyAutoDirection() {
+  if (mode.value !== "text") return;
   if (!config.value?.autoDirection) return;
   const direction = detectDirection(text.value);
   if (!direction) return;
@@ -217,6 +267,7 @@ function applyAutoDirection() {
 }
 
 watch(text, (value) => {
+  if (mode.value !== "text") return;
   applyAutoDirection();
 
   if (autoTranslateTimer) clearTimeout(autoTranslateTimer);
@@ -247,6 +298,7 @@ function changeProvider(id: string) {
   const next = normalizeConfig(
     { ...config.value, activeProvider: id },
     providers.value,
+    imageProviders.value,
   );
   haltSpeech();
   result.value = null;
@@ -257,25 +309,49 @@ function changeProvider(id: string) {
 function changeSource(value: string) {
   haltSpeech();
   result.value = null;
-  void updateConfig({ sourceLang: value });
+  if (mode.value === "image") {
+    void updateConfig({ imageSourceLang: value });
+  } else {
+    void updateConfig({ sourceLang: value });
+  }
 }
 
 /** 切换目标语言，停止朗读并清空旧译文。 */
 function changeTarget(value: string) {
   haltSpeech();
   result.value = null;
-  void updateConfig({ targetLang: value });
+  if (mode.value === "image") {
+    void updateConfig({ imageTargetLang: value });
+  } else {
+    void updateConfig({ targetLang: value });
+  }
 }
 
 /** 交换源语言与目标语言；源语言为自动检测时不可交换。 */
 function swapLanguages() {
-  if (!config.value || config.value.sourceLang === "auto") return;
+  const from = currentSourceLang.value;
+  const to = currentTargetLang.value;
+  if (from === "auto") return;
   haltSpeech();
   result.value = null;
-  void updateConfig({
-    sourceLang: config.value.targetLang,
-    targetLang: config.value.sourceLang,
-  });
+  if (mode.value === "image") {
+    void updateConfig({ imageSourceLang: to, imageTargetLang: from });
+  } else {
+    void updateConfig({ sourceLang: to, targetLang: from });
+  }
+}
+
+/** 切换文本/图片翻译；停止朗读并作废尚未完成的文本请求。 */
+function switchMode(next: WorkspaceMode) {
+  if (mode.value === next) return;
+  haltSpeech();
+  if (autoTranslateTimer) {
+    clearTimeout(autoTranslateTimer);
+    autoTranslateTimer = undefined;
+  }
+  translateSeq++;
+  loading.value = false;
+  mode.value = next;
 }
 
 /** 语言栏上的快捷开关：切换自动方向，开启时立即按当前输入调整语言。 */
@@ -288,6 +364,7 @@ function toggleAutoDirection() {
 
 /** 执行翻译：递增序号使过期响应被丢弃，完成后按设置自动朗读译文。 */
 async function doTranslate() {
+  if (mode.value !== "text") return;
   if (!config.value || !text.value.trim()) return;
   const seq = ++translateSeq;
   haltSpeech();
@@ -352,7 +429,11 @@ async function handleSettingsSave(
   nextCredentials: ProviderCredentials,
 ) {
   try {
-    const normalized = normalizeConfig(next, providers.value);
+    const normalized = normalizeConfig(
+      next,
+      providers.value,
+      imageProviders.value,
+    );
     const autoDirectionJustEnabled =
       !config.value?.autoDirection && normalized.autoDirection;
     const saved = await saveSettings(normalized, nextCredentials);
@@ -380,9 +461,28 @@ async function handleSettingsSave(
         </div>
       </div>
 
+      <nav class="mode-tabs" aria-label="翻译模式">
+        <button
+          class="mode-tab"
+          :class="{ active: mode === 'text' }"
+          type="button"
+          @click="switchMode('text')"
+        >
+          文本翻译
+        </button>
+        <button
+          class="mode-tab"
+          :class="{ active: mode === 'image' }"
+          type="button"
+          @click="switchMode('image')"
+        >
+          图片翻译
+        </button>
+      </nav>
+
       <div class="topbar-actions">
         <AppSelect
-          v-if="providers.length"
+          v-if="mode === 'text' && providers.length"
           class="provider-select"
           :model-value="config?.activeProvider ?? ''"
           :options="providerOptions"
@@ -422,7 +522,7 @@ async function handleSettingsSave(
     <main v-if="!booting && config" class="workspace">
       <div class="lang-bar">
         <AppSelect
-          :model-value="config.sourceLang"
+          :model-value="currentSourceLang"
           :options="sourceOptions"
           label="源语言"
           @update:model-value="changeSource"
@@ -433,7 +533,7 @@ async function handleSettingsSave(
           type="button"
           title="交换语言"
           aria-label="交换语言"
-          :disabled="config.sourceLang === 'auto'"
+          :disabled="currentSourceLang === 'auto'"
           @click="swapLanguages"
         >
           <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
@@ -449,13 +549,14 @@ async function handleSettingsSave(
         </button>
 
         <AppSelect
-          :model-value="config.targetLang"
+          :model-value="currentTargetLang"
           :options="targetOptions"
           label="目标语言"
           @update:model-value="changeTarget"
         />
 
         <button
+          v-if="mode === 'text'"
           class="auto-direction-btn"
           :class="{ active: config.autoDirection }"
           type="button"
@@ -477,17 +578,33 @@ async function handleSettingsSave(
         </button>
 
         <span class="lang-spacer"></span>
-        <span class="provider-hint">{{ activeProvider?.description }}</span>
+        <span class="provider-hint">{{ currentProvider?.description }}</span>
       </div>
 
-      <p v-if="missingSettings" class="alert">
-        尚未填写 {{ activeProvider?.name }} 的凭据，翻译暂不可用。
+      <div v-if="missingSettings" class="alert">
+        <span>
+          尚未填写 {{ currentProvider?.name }} 的凭据，翻译暂不可用。
+        </span>
         <button type="button" class="link-btn" @click="openSettings">
           去设置
         </button>
-      </p>
+        <span
+          v-if="currentProvider?.helpLinks?.length"
+          class="alert-links"
+        >
+          <button
+            v-for="link in currentProvider.helpLinks"
+            :key="link.url"
+            type="button"
+            class="link-btn"
+            @click="openExternalUrl(link.url)"
+          >
+            {{ link.label }}
+          </button>
+        </span>
+      </div>
 
-      <div class="panes">
+      <div v-if="mode === 'text'" class="panes">
         <section class="pane">
           <div class="pane-head">
             <span>原文</span>
@@ -630,6 +747,13 @@ async function handleSettingsSave(
           </div>
         </section>
       </div>
+
+      <ImageTranslator
+        v-else
+        :provider="activeImageProvider"
+        :source-lang="currentSourceLang"
+        :target-lang="currentTargetLang"
+      />
     </main>
 
     <main v-else class="workspace booting">
@@ -645,6 +769,7 @@ async function handleSettingsSave(
       <SettingsModal
         v-if="settingsOpen && config"
         :providers="providers"
+        :image-providers="imageProviders"
         :config="config"
         :credentials="credentials"
         :keychain-available="keychainAvailable"

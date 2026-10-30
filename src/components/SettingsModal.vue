@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import AppSelect from "./AppSelect.vue";
+import { openExternalUrl } from "../services/external-links";
 import type {
   AppConfig,
   ProviderCredentials,
@@ -10,6 +11,7 @@ import type {
 
 const props = defineProps<{
   providers: ProviderInfo[];
+  imageProviders: ProviderInfo[];
   config: AppConfig;
   credentials: ProviderCredentials;
   /** 系统钥匙串是否可用；不可用时凭据会明文写入配置文件。 */
@@ -28,7 +30,7 @@ const draftCredentials = ref<ProviderCredentials>(
   JSON.parse(JSON.stringify(props.credentials)),
 );
 
-for (const provider of props.providers) {
+for (const provider of [...props.providers, ...props.imageProviders]) {
   if (!draftCredentials.value[provider.id]) {
     draftCredentials.value[provider.id] = {};
   }
@@ -141,6 +143,64 @@ onBeforeUnmount(() =>
               autocomplete="off"
               spellcheck="false"
             />
+          </div>
+
+          <p
+            v-if="selectedProvider.helpLinks?.length"
+            class="help-links"
+          >
+            <span>申请与文档：</span>
+            <button
+              v-for="link in selectedProvider.helpLinks"
+              :key="link.url"
+              type="button"
+              class="link-btn"
+              @click="openExternalUrl(link.url)"
+            >
+              {{ link.label }}
+            </button>
+          </p>
+        </section>
+
+        <section v-if="imageProviders.length" class="section">
+          <h3 class="section-title">图片翻译</h3>
+          <div
+            v-for="provider in imageProviders"
+            :key="provider.id"
+            class="image-provider"
+          >
+            <p class="field-hint image-provider-desc">
+              {{ provider.description }}
+            </p>
+            <div
+              v-for="field in provider.fields"
+              :key="field.key"
+              class="field"
+            >
+              <label :for="`${provider.id}-${field.key}`">
+                {{ field.label }}
+              </label>
+              <input
+                :id="`${provider.id}-${field.key}`"
+                v-model="draftCredentials[provider.id][field.key]"
+                :type="field.secret ? 'password' : 'text'"
+                :placeholder="field.placeholder"
+                autocomplete="off"
+                spellcheck="false"
+              />
+            </div>
+            <p v-if="provider.helpLinks?.length" class="help-links">
+              <span>申请与文档：</span>
+              <button
+                v-for="link in provider.helpLinks"
+                :key="link.url"
+                type="button"
+                class="link-btn"
+                @click="openExternalUrl(link.url)"
+              >
+                {{ link.label }}
+              </button>
+            </p>
           </div>
         </section>
 
