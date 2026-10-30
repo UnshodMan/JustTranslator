@@ -1,6 +1,6 @@
 [package]
 name = "just-translator"
-version = "0.1.2"
+version = "0.2.0"
 description = "JustTranslator - a cross-platform translator"
 authors = ["you"]
 edition = "2021"
