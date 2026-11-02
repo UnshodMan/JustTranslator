@@ -55,6 +55,17 @@ let translateSeq = 0;
 /** 每次朗读调用递增；过期的朗读回调会被丢弃。 */
 let speakSeq = 0;
 
+/** 输入撤销/重做：短时间窗口内的连续输入合并为一步。 */
+const HISTORY_COALESCE_MS = 500;
+/** 最多保留的撤销步数。 */
+const HISTORY_LIMIT = 200;
+const undoStack: string[] = [];
+const redoStack: string[] = [];
+/** 正在应用撤销/重做为 true，此时的文本变化不记入历史。 */
+let applyingHistory = false;
+/** 最近一次记入历史的时间戳，用于合并连续输入。 */
+let lastRecordAt = 0;
+
 const activeProvider = computed(
   () => providers.value.find((p) => p.id === config.value?.activeProvider) ?? null,
 );
@@ -333,6 +344,77 @@ watch(text, (value) => {
   }, 500);
 });
 
+// 同步记录输入历史，保证撤销/重做、清空等程序化变化被正确归属。
+watch(
+  text,
+  (value, oldValue) => {
+    if (value === oldValue) return;
+    if (applyingHistory) {
+      applyingHistory = false;
+      return;
+    }
+    recordHistory(oldValue);
+  },
+  { flush: "sync" },
+);
+
+/** 记录一步历史：短时间内的连续输入合并为一步，新输入清空重做栈。 */
+function recordHistory(oldValue: string) {
+  const now = Date.now();
+  if (now - lastRecordAt >= HISTORY_COALESCE_MS) {
+    undoStack.push(oldValue);
+    if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
+  }
+  lastRecordAt = now;
+  redoStack.length = 0;
+}
+
+/** 让下一次文本变化立即成为新的撤销步，不与近期输入合并（清空、粘贴等场景）。 */
+function forceHistoryStep() {
+  lastRecordAt = 0;
+}
+
+/** 撤销：回到历史栈中的上一版输入，当前内容进入重做栈。 */
+function undo() {
+  const prev = undoStack.pop();
+  if (prev === undefined) return;
+  redoStack.push(text.value);
+  if (prev !== text.value) {
+    applyingHistory = true;
+    text.value = prev;
+  }
+  lastRecordAt = 0;
+}
+
+/** 重做：恢复刚被撤销的输入。 */
+function redo() {
+  const next = redoStack.pop();
+  if (next === undefined) return;
+  undoStack.push(text.value);
+  if (next !== text.value) {
+    applyingHistory = true;
+    text.value = next;
+  }
+  lastRecordAt = 0;
+}
+
+/** 输入框快捷键：Ctrl/Cmd+Enter 翻译，Ctrl/Cmd+Z 撤销，Ctrl/Cmd+Shift+Z 或 Ctrl/Cmd+Y 重做。 */
+function onInputKeydown(e: KeyboardEvent) {
+  if ((!e.ctrlKey && !e.metaKey) || e.altKey) return;
+  const key = e.key.toLowerCase();
+  if (key === "enter") {
+    e.preventDefault();
+    void doTranslate();
+  } else if (key === "z") {
+    e.preventDefault();
+    if (e.shiftKey) redo();
+    else undo();
+  } else if (key === "y") {
+    e.preventDefault();
+    redo();
+  }
+}
+
 /** 切换翻译源：语言方向重置为该源支持的合法值，清空旧译文并停止朗读。 */
 function changeProvider(id: string) {
   if (!config.value) return;
@@ -437,9 +519,10 @@ async function doTranslate() {
   }
 }
 
-/** 清空输入、译文与错误提示，并停止朗读。 */
+/** 清空输入、译文与错误提示，并停止朗读；清空本身可撤销。 */
 function clearSource() {
   haltSpeech();
+  forceHistoryStep();
   text.value = "";
   result.value = null;
   error.value = "";
@@ -768,8 +851,8 @@ async function handleSettingsSave(
             placeholder="输入或粘贴要翻译的内容…"
             spellcheck="false"
             autofocus
-            @keydown.ctrl.enter.prevent="doTranslate"
-            @keydown.meta.enter.prevent="doTranslate"
+            @keydown="onInputKeydown"
+            @paste="forceHistoryStep"
           ></textarea>
           <div class="pane-foot">
             <button
