@@ -26,6 +26,9 @@ coverage/
 *.swp
 *.swo
 
+# Agent
+.trae*/
+
 # 系统
 .DS_Store
 Thumbs.db
